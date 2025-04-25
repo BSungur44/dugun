@@ -5,6 +5,7 @@ import { UploadForm } from "@/components/upload-form"
 import { type GalleryItem, WeddingGallery } from "@/components/wedding-gallery"
 import { getSupabaseClient } from "@/lib/supabase"
 import { Loader2 } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 
 export default function HomePage() {
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([])
@@ -72,50 +73,10 @@ export default function HomePage() {
   }, [])
 
   // Yeni öğe yükleme işlemi
-  const handleUpload = async (item: Omit<GalleryItem, "id" | "likes">) => {
+  const handleUpload = async (formData: FormData) => {
     try {
       setIsUploading(true)
       setError(null)
-
-      // Dosya yükleme için FormData oluştur
-      const formData = new FormData()
-
-      if (item.type === "image" && item.content.startsWith("blob:")) {
-        // Blob URL'den dosyayı al
-        const response = await fetch(item.content)
-        const blob = await response.blob()
-
-        // Dosya adını belirle
-        const fileExt = blob.type.split("/")[1]
-        const fileName = `${item.uploaderName.replace(/\s+/g, "-")}-${Date.now()}.${fileExt}`
-
-        // FormData'ya ekle
-        const file = new File([blob], fileName, { type: blob.type })
-        formData.append("file", file)
-      } else if (item.type === "audio" && item.content.startsWith("blob:")) {
-        // Ses dosyası için benzer işlem
-        const response = await fetch(item.content)
-        const blob = await response.blob()
-
-        const fileName = `audio-${Date.now()}.wav`
-        const file = new File([blob], fileName, { type: "audio/wav" })
-        formData.append("file", file)
-      } else {
-        // Eğer dosya zaten bir URL ise (test için)
-        throw new Error("Geçersiz dosya formatı. Lütfen geçerli bir dosya seçin.")
-      }
-
-      // Diğer bilgileri ekle
-      formData.append("uploaderName", item.uploaderName)
-      formData.append("type", item.type)
-
-      if (item.description) {
-        formData.append("description", item.description)
-      }
-
-      if (item.filter) {
-        formData.append("filter", item.filter)
-      }
 
       // API'ye gönder
       const response = await fetch("/api/upload", {
@@ -132,15 +93,20 @@ export default function HomePage() {
       // Başarılı yanıt - yeni öğeyi listeye ekle
       setGalleryItems((prev) => [result.item, ...prev])
 
-      // Kullanıcı adını localStorage'a kaydet
-      if (typeof window !== "undefined") {
-        localStorage.setItem("uploaderName", item.uploaderName)
-      }
+      toast({
+        title: "Başarılı!",
+        description: "İçeriğiniz başarıyla yüklendi.",
+      })
 
       return result.item
     } catch (err: any) {
       console.error("Yükleme hatası:", err)
       setError(`Yükleme hatası: ${err.message}`)
+      toast({
+        title: "Hata!",
+        description: err.message,
+        variant: "destructive",
+      })
       return null
     } finally {
       setIsUploading(false)
@@ -248,9 +214,19 @@ export default function HomePage() {
 
       // Başarılı silme - öğeyi listeden kaldır
       setGalleryItems((prev) => prev.filter((item) => item.id !== id))
+
+      toast({
+        title: "Başarılı!",
+        description: "İçerik başarıyla silindi.",
+      })
     } catch (err) {
       console.error("Silme hatası:", err)
       setError("Öğe silinirken bir hata oluştu.")
+      toast({
+        title: "Hata!",
+        description: "İçerik silinirken bir hata oluştu.",
+        variant: "destructive",
+      })
     }
   }
 

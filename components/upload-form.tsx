@@ -11,13 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ImageIcon, Mic, Upload, X, ArrowRight, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image"
-import type { GalleryItem } from "@/components/wedding-gallery"
 import { PhotoFilters, photoFilters } from "@/components/photo-filters"
 import type { FilterType } from "@/components/photo-filters"
-import { toast } from "@/components/ui/use-toast"
 
 interface UploadFormProps {
-  onUpload: (item: Omit<GalleryItem, "id">) => void
+  onUpload: (formData: FormData) => Promise<any>
   isUploading?: boolean
 }
 
@@ -211,32 +209,13 @@ export function UploadForm({ onUpload, isUploading = false }: UploadFormProps) {
         formData.append("filter", selectedFilter)
       }
 
-      // API'ye gönder
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
+      // Üst bileşene gönder
+      const result = await onUpload(formData)
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Yükleme sırasında bir hata oluştu")
+      if (result) {
+        // Formu sıfırla
+        resetForm()
       }
-
-      // Başarılı yanıt
-      console.log("Yükleme başarılı:", result)
-
-      // Formu sıfırla
-      resetForm()
-
-      // Bildirim göster
-      toast({
-        title: "Başarılı!",
-        description: "İçeriğiniz başarıyla yüklendi.",
-      })
-
-      // Üst bileşene bildir
-      onUpload(result.item)
     } catch (err: any) {
       console.error("Form gönderme hatası:", err)
       setError(`Yükleme hatası: ${err.message}`)
